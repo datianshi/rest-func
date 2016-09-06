@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"os"
 	"io/ioutil"
+	"net/url"
+	"strings"
 )
 
 type Rest struct {
@@ -106,12 +108,22 @@ func (c *ConnectParams) WithHttpBody(body io.ReadCloser) *ConnectParams {
 	return c
 }
 
-func (c *ConnectParams) SkipSslVerify() *ConnectParams {
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
 
-	c.Transport = transport
+func (c *ConnectParams) WithFormValue(values url.Values) *ConnectParams {
+	c.Request.Body = ioutil.NopCloser(strings.NewReader(values.Encode()))
+	c.WithContentType("application/x-www-form-urlencoded")
+	return c.WithHttpMethod(POST)
+}
+
+
+func (c *ConnectParams) SkipSslVerify(skip bool) *ConnectParams {
+	if (skip) {
+		transport := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+
+		c.Transport = transport
+	}
 	return c
 }
 
