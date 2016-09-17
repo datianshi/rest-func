@@ -13,6 +13,8 @@ import (
 	"io/ioutil"
 	"net/url"
 	"strings"
+	"net/http/httputil"
+	"errors"
 )
 
 type Rest struct {
@@ -50,10 +52,29 @@ var DELETE httpMethod = func(request *http.Request) *http.Request {
 }
 
 var DefaultConnect connect = func(request *http.Request, transport http.RoundTripper) (*http.Response, error) {
+	debug := "true" == os.Getenv("HTTP_DEBUG")
+	if (debug) {
+		dump, err := httputil.DumpRequest(request, true)
+		if err != nil {
+			return nil, errors.New("Dump http is enabled, failed to dump the message")
+		}
+		fmt.Fprintf(os.Stdout, "%q", dump)
+	}
 	client := &http.Client{
 		Transport: transport,
 	}
-	return client.Do(request)
+	response, err := client.Do(request)
+	if (err != nil) {
+		return nil, err
+	}
+	if (debug) {
+		dump, err := httputil.DumpResponse(response, true)
+		if err != nil {
+			return nil, errors.New("Dump http is enabled, failed to dump the message")
+		}
+		fmt.Fprintf(os.Stdout, "%q", dump)
+	}
+	return response, nil
 
 }
 
@@ -108,13 +129,11 @@ func (c *ConnectParams) WithHttpBody(body io.ReadCloser) *ConnectParams {
 	return c
 }
 
-
 func (c *ConnectParams) WithFormValue(values url.Values) *ConnectParams {
 	c.Request.Body = ioutil.NopCloser(strings.NewReader(values.Encode()))
 	c.WithContentType("application/x-www-form-urlencoded")
 	return c.WithHttpMethod(POST)
 }
-
 
 func (c *ConnectParams) SkipSslVerify(skip bool) *ConnectParams {
 	if (skip) {
