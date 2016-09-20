@@ -1,20 +1,20 @@
 package rest
 
 import (
-	"net/http"
-	"io"
+	"bytes"
 	"crypto/tls"
 	"encoding/base64"
-	"fmt"
-	"bytes"
-	"mime/multipart"
-	"path/filepath"
-	"os"
-	"io/ioutil"
-	"net/url"
-	"strings"
-	"net/http/httputil"
 	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"mime/multipart"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 type Rest struct {
@@ -51,46 +51,38 @@ var DELETE httpMethod = func(request *http.Request) *http.Request {
 	return request
 }
 
-var DefaultConnect connect = func(request *http.Request, transport http.RoundTripper) (*http.Response, error) {
-	debug := "true" == os.Getenv("HTTP_DEBUG")
-	if (debug) {
-		dump, err := httputil.DumpRequest(request, true)
-		if err != nil {
-			return nil, errors.New("Dump http is enabled, failed to dump the message")
-		}
-		fmt.Fprintf(os.Stdout, "%q", dump)
-	}
-	client := &http.Client{
-		Transport: transport,
-	}
-	response, err := client.Do(request)
-	if (err != nil) {
-		return nil, err
-	}
-	if (debug) {
-		dump, err := httputil.DumpResponse(response, true)
-		if err != nil {
-			return nil, errors.New("Dump http is enabled, failed to dump the message")
-		}
-		fmt.Fprintf(os.Stdout, "%q", dump)
-	}
-	return response, nil
-
-}
-
 func (r *Rest) Build() *ConnectParams {
 	request, _ := http.NewRequest("GET", r.URL, nil)
 	return &ConnectParams{
-		Request: request,
+		Request:   request,
 		Transport: http.DefaultTransport,
 	}
 }
 
 func (c *ConnectParams) Connect() (*http.Response, error) {
+	debug := "true" == os.Getenv("HTTP_DEBUG")
+	if debug {
+		dump, err := httputil.DumpRequest(c.Request, true)
+		if err != nil {
+			return nil, errors.New("Dump http is enabled, failed to dump the message")
+		}
+		fmt.Fprintf(os.Stdout, "Request:\n%s\n\n", dump)
+	}
 	client := &http.Client{
 		Transport: c.Transport,
 	}
-	return client.Do(c.Request)
+	response, err := client.Do(c.Request)
+	if err != nil {
+		return nil, err
+	}
+	if debug {
+		dump, err := httputil.DumpResponse(response, true)
+		if err != nil {
+			return nil, errors.New("Dump http is enabled, failed to dump the message")
+		}
+		fmt.Fprintf(os.Stdout, "Response:\n%s", dump)
+	}
+	return response, nil
 }
 
 func (c *ConnectParams) WithHttpMethod(method httpMethod) *ConnectParams {
@@ -136,7 +128,7 @@ func (c *ConnectParams) WithFormValue(values url.Values) *ConnectParams {
 }
 
 func (c *ConnectParams) SkipSslVerify(skip bool) *ConnectParams {
-	if (skip) {
+	if skip {
 		transport := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
@@ -145,10 +137,3 @@ func (c *ConnectParams) SkipSslVerify(skip bool) *ConnectParams {
 	}
 	return c
 }
-
-
-
-
-
-
-
