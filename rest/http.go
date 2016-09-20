@@ -13,7 +13,6 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -105,11 +104,10 @@ func (c *ConnectParams) WithBasicAuth(user string, password string) *ConnectPara
 	return c.WithHttpHeader("Authorization", fmt.Sprintf("Basic %s", encode))
 }
 
-func (c *ConnectParams) WithMultipartForm(paramName, path string) *ConnectParams {
-	file, _ := os.Open(path)
+func (c *ConnectParams) WithMultipartForm(paramName string, file *os.File) *ConnectParams {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	part, _ := writer.CreateFormFile(paramName, filepath.Base(path))
+	part, _ := writer.CreateFormFile(paramName, file.Name())
 	io.Copy(part, file)
 	writer.Close()
 	c.Request.Body = ioutil.NopCloser(body)
