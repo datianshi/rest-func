@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"io"
 	"fmt"
+	"os"
 )
 
 var _ = Describe("Rest", func() {
@@ -63,7 +64,9 @@ var _ = Describe("Rest", func() {
 	})
 
 	Context("With MultiFormUpload", func() {
-		connect := rest.Build().WithMultipartForm("filename", "fixtures/upload.txt")
+		file, _ := os.Open("fixtures/upload.txt")
+		defer file.Close()
+		connect := rest.Build().WithMultipartForm("filename", file)
 		It("Request method should be POST", func() {
 			Ω(connect.Request.Method).Should(Equal("POST"))
 		})
