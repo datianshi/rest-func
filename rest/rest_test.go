@@ -3,12 +3,13 @@ package rest_test
 import (
 	. "github.com/datianshi/rest-func/rest"
 
+	"bytes"
+	"fmt"
+	"io"
+	"net/url"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"net/url"
-	"bytes"
-	"io"
-	"fmt"
 	"os"
 )
 
@@ -67,6 +68,7 @@ var _ = Describe("Rest", func() {
 		file, _ := os.Open("fixtures/upload.txt")
 		defer file.Close()
 		connect := rest.Build().WithMultipartForm("filename", file)
+		connect.Connect()
 		It("Request method should be POST", func() {
 			Ω(connect.Request.Method).Should(Equal("POST"))
 		})

@@ -1,13 +1,13 @@
 package rest
 
 import (
-	"bytes"
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/http/httputil"
@@ -21,11 +21,13 @@ type Rest struct {
 }
 
 type connect func(*http.Request, http.RoundTripper) (*http.Response, error)
+type extraExecution func()
 
 type ConnectParams struct {
-	Request   *http.Request
-	Transport http.RoundTripper
-	con       connect
+	Request    *http.Request
+	Transport  http.RoundTripper
+	con        connect
+	executions []extraExecution
 }
 
 type httpMethod func(*http.Request) *http.Request
@@ -53,12 +55,16 @@ var DELETE httpMethod = func(request *http.Request) *http.Request {
 func (r *Rest) Build() *ConnectParams {
 	request, _ := http.NewRequest("GET", r.URL, nil)
 	return &ConnectParams{
-		Request:   request,
-		Transport: http.DefaultTransport,
+		Request:    request,
+		Transport:  http.DefaultTransport,
+		executions: make([]extraExecution, 0),
 	}
 }
 
 func (c *ConnectParams) Connect() (*http.Response, error) {
+	for _, execution := range c.executions {
+		go execution()
+	}
 	debug := "true" == os.Getenv("HTTP_DEBUG")
 	if debug {
 		dump, err := httputil.DumpRequest(c.Request, false)
@@ -105,12 +111,24 @@ func (c *ConnectParams) WithBasicAuth(user string, password string) *ConnectPara
 }
 
 func (c *ConnectParams) WithMultipartForm(paramName string, file *os.File) *ConnectParams {
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, _ := writer.CreateFormFile(paramName, file.Name())
-	io.Copy(part, file)
-	writer.Close()
-	c.Request.Body = ioutil.NopCloser(body)
+	preader, pwriter := io.Pipe()
+	writer := multipart.NewWriter(pwriter)
+	c.appendExecution(func() {
+		part, _ := writer.CreateFormFile(paramName, file.Name())
+		_, err:= io.Copy(part, file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = writer.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = pwriter.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	c.Request.Body = preader
 	return c.WithContentType(writer.FormDataContentType()).WithHttpMethod(POST)
 }
 
@@ -134,4 +152,8 @@ func (c *ConnectParams) SkipSslVerify(skip bool) *ConnectParams {
 		c.Transport = transport
 	}
 	return c
+}
+
+func (c *ConnectParams) appendExecution(execution extraExecution) {
+	c.executions = append(c.executions, execution)
 }
