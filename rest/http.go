@@ -61,7 +61,7 @@ func (r *Rest) Build() *ConnectParams {
 func (c *ConnectParams) Connect() (*http.Response, error) {
 	debug := "true" == os.Getenv("HTTP_DEBUG")
 	if debug {
-		dump, err := httputil.DumpRequest(c.Request, true)
+		dump, err := httputil.DumpRequest(c.Request, false)
 		if err != nil {
 			return nil, errors.New("Dump http is enabled, failed to dump the message")
 		}
@@ -75,7 +75,7 @@ func (c *ConnectParams) Connect() (*http.Response, error) {
 		return nil, err
 	}
 	if debug {
-		dump, err := httputil.DumpResponse(response, true)
+		dump, err := httputil.DumpResponse(response, false)
 		if err != nil {
 			return nil, errors.New("Dump http is enabled, failed to dump the message")
 		}
