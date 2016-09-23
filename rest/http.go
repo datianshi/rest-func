@@ -14,6 +14,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/datianshi/rest-func/barfile"
 )
 
 type Rest struct {
@@ -113,9 +115,18 @@ func (c *ConnectParams) WithBasicAuth(user string, password string) *ConnectPara
 func (c *ConnectParams) WithMultipartForm(paramName string, file *os.File) *ConnectParams {
 	preader, pwriter := io.Pipe()
 	writer := multipart.NewWriter(pwriter)
+	bar, err := barfile.CreateBar(file)
+	if err != nil {
+		log.Fatal(err)
+	}
 	c.appendExecution(func() {
-		part, _ := writer.CreateFormFile(paramName, file.Name())
-		_, err:= io.Copy(part, file)
+		bar.Start()
+		part, err := writer.CreateFormFile(paramName, file.Name())
+		if err != nil {
+			log.Fatal(err)
+		}
+		part = io.MultiWriter(part, bar)
+		_, err = io.Copy(part, file)
 		if err != nil {
 			log.Fatal(err)
 		}
