@@ -138,6 +138,7 @@ func (c *ConnectParams) WithMultipartForm(paramName string, file *os.File) *Conn
 		if err != nil {
 			log.Fatal(err)
 		}
+		bar.Finish()
 	})
 	c.Request.Body = preader
 	return c.WithContentType(writer.FormDataContentType()).WithHttpMethod(POST)
