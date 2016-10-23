@@ -11,6 +11,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"os"
+	"github.com/onsi/gomega/ghttp"
+	"net/http"
 )
 
 var _ = Describe("Rest", func() {
@@ -68,9 +70,35 @@ var _ = Describe("Rest", func() {
 		file, _ := os.Open("fixtures/upload.txt")
 		defer file.Close()
 		connect := rest.Build().WithMultipartForm("filename", file)
-		connect.Connect()
 		It("Request method should be POST", func() {
 			Ω(connect.Request.Method).Should(Equal("POST"))
 		})
 	})
+
+	Context("With http proxy", func(){
+		var server *ghttp.Server
+		var proxyCatchURL string
+		var catchProxyURL http.HandlerFunc = func(response http.ResponseWriter, request *http.Request){
+			proxyCatchURL = request.URL.String()
+		}
+		BeforeEach(func() {
+			server = ghttp.NewServer()
+			os.Setenv("http_proxy", server.URL())
+			server.AppendHandlers(ghttp.CombineHandlers(
+				catchProxyURL,
+			))
+		})
+		It("Should request through the proxy", func(){
+			google := Rest{
+				URL: "http://google.com",
+			}
+			google.Build().SkipSslVerify(true).Connect()
+			Ω(proxyCatchURL).Should(Equal("http://google.com/"))
+		})
+		AfterEach(func() {
+			server.Close()
+		})
+	})
+
+
 })

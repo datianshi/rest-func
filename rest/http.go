@@ -158,6 +158,7 @@ func (c *ConnectParams) WithFormValue(values url.Values) *ConnectParams {
 func (c *ConnectParams) SkipSslVerify(skip bool) *ConnectParams {
 	if skip {
 		transport := &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 
