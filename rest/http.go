@@ -54,6 +54,11 @@ var DELETE httpMethod = func(request *http.Request) *http.Request {
 	return request
 }
 
+var PATCH httpMethod = func(request *http.Request) *http.Request {
+	request.Method = "PATCH"
+	return request
+}
+
 func (r *Rest) Build() *ConnectParams {
 	request, _ := http.NewRequest("GET", r.URL, nil)
 	return &ConnectParams{
